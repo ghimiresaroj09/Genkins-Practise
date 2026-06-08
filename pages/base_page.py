@@ -33,30 +33,7 @@ class BasePage:
         self.action_utils = ActionUtils(driver)
         self.browser_utils = BrowserUtils(driver)
 
-        self.message_locator= (By.XPATH,"//div[@role = 'alert']")
-        self.tender_locator = (By.XPATH,"//a[@href = '/tender']")
-        self.project_locator = (By.XPATH,"//a[@href = '/projects']")
-        self.budget_locator = (By.XPATH,"//a[@href = '/budget']")
-        self.procurement_locator = (By.XPATH,"//a[@href = '#0']")
-        self.purchase_request_locator = (By.XPATH,"//a[@href = '/procurement/pr']")
-        self.request_for_quote_locator = (By.XPATH,"//a[@href = '/procurement/rfq']")
-        self.purchase_order_locator = (By.XPATH,"//a[@href = '/procurement/po']")
-        self.invoice_locator = (By.XPATH,"//a[@href = '/procurement/invoice']")
-        self.delivery_tracker_locator = (By.XPATH,"//a[@href = '/procurement/delivery-tracker']")
-        self.items_management_locator = (By.XPATH,"//a[@href = '/items-management']")
-        self.inventory_management_locator = (By.XPATH,"//a[@href = '/inventory-management']")
-        self.configuration_locator = (By.XPATH,"//a[@href = '/configuration']")
-        self.supplier_management_locator = (By.XPATH,"//a[@href = '/supplier-management']")
-        self.settings_locator = (By.XPATH,"//a[@href = '/settings']")
-        self.logout_locator = (By.XPATH,"//div[@data-slot='tooltip-trigger' and .//span[normalize-space()='Logout']]")
-        self.profile_locator = (By.XPATH,"//button[@type='button' and contains(@class,'cursor-pointer')]")
-        self.dashboard_locator = (By.XPATH,"//h3[text() = 'Dashboard']")
-        self.search_box_locator = (By.XPATH,"//input[@type='text']")
-        self.pagination_right_locator = (By.XPATH,"//*[local-name()='svg' and contains(@class,'lucide lucide-chevron-right')]")
-        self.back_breadcrumb_locator = (By.XPATH,"//*[local-name()='svg' and contains(@class,'lucide-circle-chevron-left')]")
-        self.view_details_locator = (By.XPATH,"//*[local-name()='svg' and contains(@class,'lucide-eye')]")
-        self.action_locator = (By.XPATH,"//*[local-name()='svg' and contains(@class,'lucide-circle-arrow-right')]")
-
+        self.contact_link_locator = (By.XPATH, "//a[@href='#contact']")
     
     def open_page(self, url=TestConfig.BASE_URL):
         """

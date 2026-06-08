@@ -8,7 +8,7 @@ from enum import Enum
 class Environment(Enum):
     """Environment URLs"""
     DEV = "https://dev.example.com"
-    STAGING = "https://staging.ldverp.com/"
+    STAGING = "https://ghimiresaroj09.com.np/"
     PROD = "https://prod.example.com"
 
 
