@@ -5,6 +5,7 @@ Pytest configuration and fixtures for Selenium Framework
 import pytest
 from config.config import TestConfig
 from utilities.driver_manager import DriverManager
+from utilities.screenshot_utils import ScreenshotUtils
 from utilities.logger import get_logger
 from dotenv import load_dotenv
 import sys
@@ -97,16 +98,9 @@ def pytest_runtest_makereport(item, call):
     outcome = yield
     report = outcome.get_result()
 
-    # Only act on test execution phase
     if report.when == "call" and report.failed:
 
         driver = item.funcargs.get("driver")
 
         if driver:
-            try:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                screenshot_path = f"screenshots/{item.name}_{timestamp}.png"
-                driver.save_screenshot(screenshot_path)
-                logger.error(f"Screenshot saved: {screenshot_path}")
-            except Exception as e:
-                logger.error(f"Failed to capture screenshot: {e}")
+            ScreenshotUtils.take_screenshot_on_failure(driver, item.name)
