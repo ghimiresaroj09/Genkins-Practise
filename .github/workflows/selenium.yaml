@@ -11,30 +11,96 @@ on:
 
   workflow_dispatch:
 
+  repository_dispatch:
+    types:
+      - run-selenium
+
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write
 
 jobs:
+
   selenium-tests:
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     outputs:
-      report-url: ${{ steps.deployment.outputs.page_url }}
+      app-name: ${{ steps.trigger.outputs.app_name }}
+      source-repo: ${{ steps.trigger.outputs.source_repo }}
+      source-branch: ${{ steps.trigger.outputs.source_branch }}
+      source-commit: ${{ steps.trigger.outputs.source_commit }}
+      source-actor: ${{ steps.trigger.outputs.source_actor }}
 
     steps:
 
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      #################################################################
+      # Detect how this workflow was triggered
+      #################################################################
+
+      - name: Capture Trigger Information
+        id: trigger
+        shell: bash
+        run: |
+
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+
+            APP_NAME="${{ github.event.client_payload.application }}"
+            SOURCE_REPO="${{ github.event.client_payload.repository }}"
+            SOURCE_BRANCH="${{ github.event.client_payload.branch }}"
+            SOURCE_COMMIT="${{ github.event.client_payload.commit }}"
+            SOURCE_ACTOR="${{ github.event.client_payload.actor }}"
+
+          else
+
+            APP_NAME="Genkins-Practise"
+            SOURCE_REPO="${{ github.repository }}"
+            SOURCE_BRANCH="${{ github.ref_name }}"
+            SOURCE_COMMIT="${{ github.sha }}"
+            SOURCE_ACTOR="${{ github.actor }}"
+
+          fi
+
+          echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
+          echo "source_repo=$SOURCE_REPO" >> $GITHUB_OUTPUT
+          echo "source_branch=$SOURCE_BRANCH" >> $GITHUB_OUTPUT
+          echo "source_commit=$SOURCE_COMMIT" >> $GITHUB_OUTPUT
+          echo "source_actor=$SOURCE_ACTOR" >> $GITHUB_OUTPUT
+
+      #################################################################
+      # Display Trigger Information
+      #################################################################
+
+      - name: Display Trigger Information
+        run: |
+          echo "========================================"
+          echo "Event        : ${{ github.event_name }}"
+          echo "Application  : ${{ steps.trigger.outputs.app_name }}"
+          echo "Repository   : ${{ steps.trigger.outputs.source_repo }}"
+          echo "Branch       : ${{ steps.trigger.outputs.source_branch }}"
+          echo "Commit       : ${{ steps.trigger.outputs.source_commit }}"
+          echo "Triggered By : ${{ steps.trigger.outputs.source_actor }}"
+          echo "========================================"
+
+      #################################################################
+      # Setup Python
+      #################################################################
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
+          cache: pip
+
+      #################################################################
+      # Setup Java
+      #################################################################
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -42,41 +108,67 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      #################################################################
+      # Install Dependencies
+      #################################################################
+
       - name: Install Python Packages
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      #################################################################
+      # Install Allure
+      #################################################################
 
       - name: Install Allure CLI
         run: |
           wget https://github.com/allure-framework/allure2/releases/download/2.34.1/allure-2.34.1.tgz
           tar -xzf allure-2.34.1.tgz
           sudo mv allure-2.34.1 /opt/allure
-          sudo ln -s /opt/allure/bin/allure /usr/local/bin/allure
+          sudo ln -sf /opt/allure/bin/allure /usr/local/bin/allure
+
+      #################################################################
+      # Execute Selenium Tests
+      #################################################################
 
       - name: Run Selenium Tests
         run: |
           pytest --browser=chrome --headless=true --alluredir=allure-results
+
+      #################################################################
+      # Generate Allure HTML
+      #################################################################
 
       - name: Generate Allure HTML Report
         if: always()
         run: |
           allure generate allure-results --clean -o allure-report
 
+      #################################################################
+      # GitHub Summary
+      #################################################################
+
       - name: Test Summary
         if: always()
         run: |
-          echo "## Selenium Automation Execution" >> $GITHUB_STEP_SUMMARY
+          echo "# Selenium Automation" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Application | ${{ steps.trigger.outputs.app_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Repository | ${{ steps.trigger.outputs.source_repo }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | ${{ steps.trigger.outputs.source_branch }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trigger | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Browser | Chrome |" >> $GITHUB_STEP_SUMMARY
           echo "| Headless | True |" >> $GITHUB_STEP_SUMMARY
-          echo "| Python | 3.11 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Runner | ubuntu-latest |" >> $GITHUB_STEP_SUMMARY
           echo "| Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload Allure HTML Report
+      #################################################################
+      # Upload Reports
+      #################################################################
+
+      - name: Upload Allure Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -97,7 +189,11 @@ jobs:
           name: logs
           path: logs/
 
-      - name: Upload GitHub Pages Artifact
+      #################################################################
+      # Publish to GitHub Pages
+      #################################################################
+
+      - name: Upload Pages Artifact
         if: always()
         uses: actions/upload-pages-artifact@v3
         with:
@@ -114,14 +210,37 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     permissions:
+      contents: read
       pages: write
       id-token: write
 
     steps:
 
-      - name: Deploy to GitHub Pages
+      ###############################################################
+      # Deploy GitHub Pages
+      ###############################################################
+
+      - name: Deploy Allure Report to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      ###############################################################
+      # GitHub Summary
+      ###############################################################
+
+      - name: Deployment Summary
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Allure Report Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Application:** ${{ needs.selenium-tests.outputs.app-name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Report URL:**" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+
+      ###############################################################
+      # Email Notification
+      ###############################################################
 
       - name: Send Email Notification
         if: always()
@@ -134,30 +253,73 @@ jobs:
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
 
-          subject: "Selenium Automation - ${{ job.status }}"
+          subject: |
+            Selenium Automation • ${{ needs.selenium-tests.result }} • ${{ needs.selenium-tests.outputs.app-name }}
 
           to: ${{ secrets.EMAIL_TO }}
           from: GitHub Actions
 
           body: |
+
             Hello,
 
-            Your Selenium automation workflow has completed.
+            Your Selenium Automation execution has completed successfully.
 
-            ----------------------------------------
-            Repository : ${{ github.repository }}
-            Workflow   : ${{ github.workflow }}
-            Branch     : ${{ github.ref_name }}
-            Status     : ${{ needs.selenium-tests.result }}
-            Triggered By : ${{ github.actor }}
-            Commit SHA : ${{ github.sha }}
-            ----------------------------------------
+            ==================================================
 
-            Workflow:
+            Application
+            ${{ needs.selenium-tests.outputs.app-name }}
+
+            Repository
+            ${{ needs.selenium-tests.outputs.source-repo }}
+
+            Branch
+            ${{ needs.selenium-tests.outputs.source-branch }}
+
+            Triggered By
+            ${{ needs.selenium-tests.outputs.source-actor }}
+
+            Commit
+            ${{ needs.selenium-tests.outputs.source-commit }}
+
+            Workflow Status
+            ${{ needs.selenium-tests.result }}
+
+            Event
+            ${{ github.event_name }}
+
+            ==================================================
+
+            Workflow Run
+
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-            Allure Report:
+            --------------------------------------------------
+
+            Allure Report
+
             ${{ steps.deployment.outputs.page_url }}
 
-            Regards,
-            GitHub Actions
+            --------------------------------------------------
+
+            Artifacts
+
+            • Allure HTML Report
+            • Screenshots
+            • Logs
+
+            ==================================================
+
+            This email was generated automatically by GitHub Actions.
+
+      ###############################################################
+      # Display Report URL
+      ###############################################################
+
+      - name: Report URL
+        run: |
+          echo ""
+          echo "============================================="
+          echo "Allure Report"
+          echo "${{ steps.deployment.outputs.page_url }}"
+          echo "============================================="
