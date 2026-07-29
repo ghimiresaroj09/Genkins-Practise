@@ -51,6 +51,7 @@ jobs:
           echo "| Headless | True |" >> $GITHUB_STEP_SUMMARY
           echo "| Python | 3.11 |" >> $GITHUB_STEP_SUMMARY
           echo "| Runner | ubuntu-latest |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Allure Results
         if: always()
@@ -72,3 +73,44 @@ jobs:
         with:
           name: logs
           path: logs/
+
+      - name: Send Email Notification
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+
+          username: ${{ vars.EMAIL_USERNAME }}
+          password: ${{ vars.EMAIL_PASSWORD }}
+
+          subject: "Selenium Automation - ${{ job.status }}"
+
+          to: ${{ vars.EMAIL_TO }}
+          from: GitHub Actions
+
+          body: |
+            Hello,
+
+            Your Selenium automation workflow has completed.
+
+            ----------------------------------------
+            Repository : ${{ github.repository }}
+            Workflow   : ${{ github.workflow }}
+            Branch     : ${{ github.ref_name }}
+            Status     : ${{ job.status }}
+            Triggered By : ${{ github.actor }}
+            Commit SHA : ${{ github.sha }}
+            ----------------------------------------
+
+            View Workflow:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Artifacts uploaded:
+            • Allure Results
+            • Screenshots
+            • Logs
+
+            Regards,
+            GitHub Actions
