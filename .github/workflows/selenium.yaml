@@ -11,10 +11,14 @@ on:
 
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   selenium-tests:
 
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
 
@@ -25,6 +29,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install Python Packages
         run: |
@@ -34,6 +39,18 @@ jobs:
       - name: Run Selenium Tests
         run: |
           pytest --browser=chrome --headless=true --alluredir=allure-results
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "## Selenium Automation Execution" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Browser | Chrome |" >> $GITHUB_STEP_SUMMARY
+          echo "| Headless | True |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python | 3.11 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Runner | ubuntu-latest |" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Allure Results
         if: always()
