@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 
 from pages.contact_page import ContactPage
 from utilities.browser_utils import BrowserUtils
-
+from utilities.screenshot_utils import ScreenshotUtils
 
 @allure.feature("Contact Form")
 @allure.story("Submit Contact Form")
@@ -28,6 +28,9 @@ def test_contact_form_submission(driver):
             "This is a test message."
         )
 
+    with allure.step("Take screenshot of the success message"):
+        ScreenshotUtils.take_screenshot(driver, "contact_form_success")
+        
     with allure.step("Verify success message is displayed"):
         success_message = contact_page.get_element_text((By.XPATH, "//p[@class = 'mt-4']"))
         assert success_message == "The form was submitted successfully."
